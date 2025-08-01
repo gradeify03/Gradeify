@@ -30,8 +30,19 @@ const LoginHOD = () => {
   const [loadingRegister, setLoadingRegister] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [justRegistered, setJustRegistered] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   React.useEffect(() => {
     setMounted(true);
+    
+    // Check for remembered credentials on component mount
+    const rememberedEmail = localStorage.getItem('rememberedEmail');
+    const rememberMeStatus = localStorage.getItem('rememberMe');
+    
+    if (rememberedEmail && rememberMeStatus === 'true') {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
+    }
+    
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       // Only auto-login if user is already authenticated (not from registration)
@@ -47,6 +58,14 @@ const LoginHOD = () => {
     return () => unsubscribe();
   }, [navigate, justRegistered]);
 
+  // Add a function to clear remembered credentials
+  const clearRememberedCredentials = () => {
+    localStorage.removeItem('rememberedEmail');
+    localStorage.removeItem('rememberMe');
+    setEmail("");
+    setRememberMe(false);
+  };
+
   // Input styles for light/dark
   const inputClass =
     "w-full pl-12 pr-4 py-3 rounded-xl border focus:border-[#265d4a] focus:ring-2 focus:ring-[#265d4a]/20 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 bg-white dark:bg-[#181f2a] border-gray-200 dark:border-gray-700 transition";
@@ -59,6 +78,19 @@ const LoginHOD = () => {
     setLoadingLogin(true);
     try {
       await signInWithEmailPassword(email, password);
+      
+      // Handle "Remember Me" functionality
+      if (rememberMe) {
+        // Store login credentials in localStorage (for demo purposes)
+        // In production, you might want to use more secure methods
+        localStorage.setItem('rememberedEmail', email);
+        localStorage.setItem('rememberMe', 'true');
+      } else {
+        // Clear any previously stored credentials
+        localStorage.removeItem('rememberedEmail');
+        localStorage.removeItem('rememberMe');
+      }
+      
       setLoadingLogin(false);
     } catch (err: any) {
       setLoginError(err.message || "Login failed");
@@ -256,8 +288,13 @@ const LoginHOD = () => {
                   {loginError && <div className="w-full mb-2 text-red-600 text-sm text-center">{loginError}</div>}
                   {/* Remember me and Forgot Password */}
                   <div className="flex items-center justify-between w-full mb-4">
-                    <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                      <input type="checkbox" className="accent-[#265d4a] dark:accent-[#56dfcf] rounded" />
+                    <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-[#265d4a] dark:hover:text-[#56dfcf] transition-colors">
+                      <input 
+                        type="checkbox" 
+                        className="accent-[#265d4a] dark:accent-[#56dfcf] rounded cursor-pointer" 
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                      />
                       Remember me
                     </label>
                     <button 

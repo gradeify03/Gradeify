@@ -27,40 +27,16 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("DEBUG: Form submitted with email:", email);
     setLoading(true);
     setMessage("");
     setMessageType('');
     setShowPopup(false);
 
     try {
-      // First check if the email exists in Firebase Auth
-      console.log("DEBUG: Checking if email exists:", email);
-      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
-      console.log("DEBUG: signInMethods for", email, "=>", signInMethods);
-      
-      if (signInMethods.length === 0) {
-        console.log("DEBUG: No sign-in methods found - user doesn't exist");
-        setMessage("No account found with this email address. Please check your email or create a new account.");
-        setMessageType('error');
-        setShowPopup(true);
-        return;
-      }
-
-      // Check if the user has password authentication enabled
-      if (!signInMethods.includes("password")) {
-        console.log("DEBUG: User exists but doesn't use password authentication");
-        setMessage("This email is registered with a third-party provider (e.g., Google). Please use the appropriate sign-in method.");
-        setMessageType('error');
-        setShowPopup(true);
-        return;
-      }
-
-      // User exists and supports password authentication, send reset email
-      console.log("DEBUG: User exists and supports password auth, sending reset email");
+      // Directly try to send password reset email
+      // Firebase will handle the validation internally
       await sendPasswordResetEmail(auth, email);
       
-      console.log("DEBUG: Password reset email sent successfully for:", email);
       setMessage("Password reset email sent successfully! Please check your inbox and follow the instructions.");
       setMessageType('success');
       setShowPopup(true);
@@ -71,9 +47,7 @@ const ForgotPassword = () => {
         navigate('/login_hod');
       }, 3000);
     } catch (error: any) {
-      console.error('DEBUG: Password reset error:', error);
-      console.error('DEBUG: Error code:', error.code);
-      console.error('DEBUG: Error message:', error.message);
+      console.error('Password reset error:', error);
       
       // Handle specific Firebase auth errors
       switch (error.code) {
@@ -92,22 +66,8 @@ const ForgotPassword = () => {
         case 'auth/operation-not-allowed':
           setMessage("Password reset is not enabled for this account. Please contact support.");
           break;
-        case 'auth/network-request-failed':
-          setMessage("Network error. Please check your internet connection and try again.");
-          break;
-        case 'auth/email-already-in-use':
-          setMessage("This email is already in use. Please try a different email.");
-          break;
         default:
-          // If we get here, it might be a different type of error
-          console.error('DEBUG: Unhandled error code:', error.code);
-          if (error.message && error.message.includes('user-not-found')) {
-            setMessage("No account found with this email address. Please check your email or create a new account.");
-          } else if (error.message && error.message.includes('invalid-email')) {
-            setMessage("Invalid email address. Please enter a valid email.");
-          } else {
-            setMessage("Failed to send reset email. Please try again.");
-          }
+          setMessage("Failed to send reset email. Please try again.");
       }
       setMessageType('error');
       setShowPopup(true);

@@ -12,7 +12,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyDxkrp1oAiVXnfck-fMUrUvsGuBowx4ipA",
   authDomain: "gradeify-8254e.firebaseapp.com",
   projectId: "gradeify-8254e",
-  storageBucket: "gradeify-8254e.appspot.com",
+  storageBucket: "gradeify-8254e.firebasestorage.app",
   messagingSenderId: "568317331012",
   appId: "1:568317331012:web:d438e4d08194b8696f1e11",
   measurementId: "G-VQLW7149KX"

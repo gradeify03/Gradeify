@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { Moon, Sun, Search, Bell, User, Users, X, Plus } from "lucide-react";
 import { useTheme } from "next-themes";
-import { getAuth, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { getAuth, signOut, onAuthStateChanged, User as FirebaseUser, createUserWithEmailAndPassword } from "firebase/auth";
+import { getFirestore, setDoc, collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { useUserLoginMethod } from "../hooks/useUserLoginMethod";
 import { db } from "../components/firebase";
-import { collection, addDoc, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
+import { Toaster, toast } from "@/components/ui/sonner";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 
 // Staff interface
 interface StaffMember {
-  id: string;
+  staffId: string;
   firstName: string;
   lastName: string;
   email: string;
+  password: string;
   subjectNames: string;
-  createdAt: any; // Firestore timestamp
   hodId: string;
+  createdAt: any; // Firestore timestamp
+  status: string;
 }
 
 export default function HodDashboard() {
@@ -28,6 +32,8 @@ export default function HodDashboard() {
   const [showAddStaffPopup, setShowAddStaffPopup] = useState(false);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const { user, userDetails, loginMethod, isGoogleUser, isManualUser, loading: userLoading } = useUserLoginMethod();
 
   // Form state for adding staff
@@ -39,6 +45,10 @@ export default function HodDashboard() {
     confirmPassword: '',
     subjectNames: ''
   });
+
+  // Add state for delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [staffToDelete, setStaffToDelete] = useState<StaffMember | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -55,18 +65,27 @@ export default function HodDashboard() {
     if (!user) return;
     
     try {
-      const staffRef = collection(db, 'staff');
-      const q = query(staffRef, where('hodId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
+      console.log('Loading staff members for HOD:', user.uid);
+      // Read from HOD's staff subcollection
+      const staffRef = collection(db, 'hods', user.uid, 'staff');
+      const querySnapshot = await getDocs(staffRef);
       
-      const staff = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as StaffMember[];
+      console.log('Found', querySnapshot.docs.length, 'staff members');
+      
+      const staff = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('Staff member data:', data);
+        return {
+          staffId: doc.id,
+          ...data
+        } as StaffMember;
+      });
       
       setStaffMembers(staff);
+      console.log('Staff members loaded successfully:', staff);
     } catch (error) {
       console.error('Error loading staff members:', error);
+      toast.error('Failed to load staff members. Please try again.');
     }
   };
 
@@ -93,7 +112,7 @@ export default function HodDashboard() {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match!');
+      toast.error('Passwords do not match!');
       return;
     }
 
@@ -101,18 +120,28 @@ export default function HodDashboard() {
 
     setLoading(true);
     try {
-      // Add staff member to Firestore
+      console.log('Creating staff account...');
+      
+      // Create a unique staff ID
+      const staffId = `staff_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Save staff profile under HOD's staff collection in Firestore
       const staffData = {
+        staffId: staffId,
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         password: formData.password, // In production, this should be hashed
         subjectNames: formData.subjectNames,
         hodId: user.uid,
-        createdAt: new Date()
+        createdAt: new Date().toISOString(),
+        status: 'active'
       };
-
-      await addDoc(collection(db, 'staff'), staffData);
+      
+      await setDoc(doc(db, "hods", user.uid, "staff", staffId), staffData);
+      console.log('Staff account created successfully in Firestore');
+      
+      toast.success(`Staff ${formData.firstName} created successfully!`);
       
       // Reset form and close popup
       setFormData({
@@ -126,13 +155,141 @@ export default function HodDashboard() {
       setShowAddStaffPopup(false);
       
       // Reload staff members
+      console.log('Reloading staff members...');
       await loadStaffMembers();
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding staff member:', error);
-      alert('Failed to add staff member. Please try again.');
+      
+      // Provide specific error messages
+      let errorMessage = 'Failed to add staff member. Please try again.';
+      
+      if (error.code === 'permission-denied') {
+        errorMessage = 'Permission denied. Please check your Firestore rules.';
+      } else if (error.code === 'unavailable') {
+        errorMessage = 'Service unavailable. Please try again.';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStaff || !user) return;
+
+    setLoading(true);
+    try {
+      // In edit mode, only update allowed fields
+      const updatedStaffData = {
+        ...selectedStaff,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        subjectNames: formData.subjectNames,
+      };
+
+      await setDoc(doc(db, "hods", user.uid, "staff", selectedStaff.staffId), updatedStaffData);
+      
+      toast.success('Success: Staff updated successfully!');
+      
+      // Reset form and close popup
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        subjectNames: ''
+      });
+      setShowAddStaffPopup(false);
+      setEditMode(false);
+      setSelectedStaff(null);
+      
+      // Reload staff members
+      await loadStaffMembers();
+      
+    } catch (error: any) {
+      console.error('Error updating staff member:', error);
+      toast.error('Failed to update staff member. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteStaff = async (staffId: string, staffName: string) => {
+    if (!user) return;
+    
+    const confirmDelete = window.confirm(`Are you sure you want to delete ${staffName}? This action cannot be undone.`);
+    if (!confirmDelete) return;
+
+    setLoading(true);
+    try {
+      await deleteDoc(doc(db, "hods", user.uid, "staff", staffId));
+      
+      toast.success('Success: Staff deleted successfully!');
+      
+      // Reload staff members
+      await loadStaffMembers();
+      
+    } catch (error: any) {
+      console.error('Error deleting staff member:', error);
+      toast.error('Failed to delete staff member. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditStaff = (staff: StaffMember) => {
+    setSelectedStaff(staff);
+    setEditMode(true);
+    setFormData({
+      firstName: staff.firstName,
+      lastName: staff.lastName,
+      email: staff.email,
+      password: staff.password,
+      confirmPassword: staff.password,
+      subjectNames: staff.subjectNames
+    });
+    setShowAddStaffPopup(true);
+  };
+
+  const handleClosePopup = () => {
+    setShowAddStaffPopup(false);
+    setEditMode(false);
+    setSelectedStaff(null);
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      subjectNames: ''
+    });
+  };
+
+  // In handleDeleteStaff, open dialog instead of deleting immediately
+  const openDeleteDialog = (staff: StaffMember) => {
+    setStaffToDelete(staff);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteStaff = async () => {
+    if (!user || !staffToDelete) return;
+    setLoading(true);
+    try {
+      await deleteDoc(doc(db, "hods", user.uid, "staff", staffToDelete.staffId));
+      toast.success(`Staff ${staffToDelete.firstName} deleted successfully!`, { style: { background: '#fee2e2', color: '#991b1b' } });
+      await loadStaffMembers();
+    } catch (error: any) {
+      console.error('Error deleting staff member:', error);
+      toast.error('Failed to delete staff member. Please try again.');
+    } finally {
+      setLoading(false);
+      setDeleteDialogOpen(false);
+      setStaffToDelete(null);
     }
   };
 
@@ -329,16 +486,36 @@ export default function HodDashboard() {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {staffMembers.map((staff) => (
-                          <div key={staff.id} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-lg">
+                          <div key={staff.staffId} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-lg">
                             <div className="flex items-center gap-4 mb-4">
                               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                                 <User className="w-6 h-6 text-blue-600 dark:text-blue-300" />
                               </div>
-                              <div>
+                              <div className="flex-1">
                                 <h3 className="font-semibold text-[#2d3748] dark:text-white">
                                   {staff.firstName} {staff.lastName}
                                 </h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">{staff.email}</p>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleEditStaff(staff)}
+                                  className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-colors"
+                                  title="Edit Staff"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => openDeleteDialog(staff)}
+                                  className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-colors"
+                                  title="Delete Staff"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
                               </div>
                             </div>
                             <div className="space-y-2">
@@ -350,6 +527,12 @@ export default function HodDashboard() {
                                 <span className="text-slate-500 dark:text-slate-400">Added:</span>
                                 <span className="text-[#2d3748] dark:text-white">
                                   {staff.createdAt?.toDate ? staff.createdAt.toDate().toLocaleDateString() : new Date(staff.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-slate-500 dark:text-slate-400">Status:</span>
+                                <span className={`font-medium ${staff.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
+                                  {staff.status}
                                 </span>
                               </div>
                             </div>
@@ -376,16 +559,18 @@ export default function HodDashboard() {
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-white dark:bg-[#232946] rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-[#2d3748] dark:text-white">Add New Staff</h3>
+                  <h3 className="text-xl font-bold text-[#2d3748] dark:text-white">
+                    {editMode ? 'Edit Staff' : 'Add New Staff'}
+                  </h3>
                   <button
-                    onClick={() => setShowAddStaffPopup(false)}
+                    onClick={handleClosePopup}
                     className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                   </button>
                 </div>
                 
-                <form onSubmit={handleAddStaff} className="space-y-4">
+                <form onSubmit={editMode ? handleUpdateStaff : handleAddStaff} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-[#2d3748] dark:text-white mb-1">
@@ -440,36 +625,39 @@ export default function HodDashboard() {
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-[#2d3748] dark:text-white mb-1">
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      value={formData.password}
-                      onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-[#2d3748] dark:text-white"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-[#2d3748] dark:text-white mb-1">
-                      Confirm Password
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      value={formData.confirmPassword}
-                      onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-[#2d3748] dark:text-white"
-                    />
-                  </div>
+                  {!editMode && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-[#2d3748] dark:text-white mb-1">
+                          Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={formData.password}
+                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-[#2d3748] dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#2d3748] dark:text-white mb-1">
+                          Confirm Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={formData.confirmPassword}
+                          onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-[#2d3748] dark:text-white"
+                        />
+                      </div>
+                    </>
+                  )}
                   
                   <div className="flex gap-3 pt-4">
                     <button
                       type="button"
-                      onClick={() => setShowAddStaffPopup(false)}
+                      onClick={handleClosePopup}
                       className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 text-[#2d3748] dark:text-white rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
                       Cancel
@@ -479,7 +667,7 @@ export default function HodDashboard() {
                       disabled={loading}
                       className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
                     >
-                      {loading ? 'Adding...' : 'Add Staff'}
+                      {loading ? 'Saving...' : editMode ? 'Update Staff' : 'Add Staff'}
                     </button>
                   </div>
                 </form>
@@ -488,6 +676,21 @@ export default function HodDashboard() {
           )}
         </div>
       </main>
+      <Toaster />
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Staff</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {staffToDelete?.firstName} {staffToDelete?.lastName}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteStaff} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

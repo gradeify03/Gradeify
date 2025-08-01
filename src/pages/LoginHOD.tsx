@@ -93,7 +93,18 @@ const LoginHOD = () => {
       
       setLoadingLogin(false);
     } catch (err: any) {
-      setLoginError(err.message || "Login failed");
+      // User-friendly error messages
+      let message = "Login failed. Please check your email and password.";
+      if (
+        err.code === "auth/invalid-credential" ||
+        err.code === "auth/wrong-password" ||
+        err.code === "auth/user-not-found"
+      ) {
+        message = "Invalid email or password.";
+      } else if (err.code === "auth/invalid-email") {
+        message = "Invalid email address format.";
+      }
+      setLoginError(message);
       setLoadingLogin(false);
     }
   };
@@ -293,7 +304,13 @@ const LoginHOD = () => {
                         type="checkbox" 
                         className="accent-[#265d4a] dark:accent-[#56dfcf] rounded cursor-pointer" 
                         checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
+                        onChange={(e) => {
+                          setRememberMe(e.target.checked);
+                          if (!e.target.checked) {
+                            localStorage.removeItem('rememberedEmail');
+                            localStorage.removeItem('rememberMe');
+                          }
+                        }}
                       />
                       Remember me
                     </label>

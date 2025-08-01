@@ -1,0 +1,199 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 165 60% 98%; /* soft mint */
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100% / 0.7; /* glassy white */
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100% / 0.7;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 1.5rem;
+    --sidebar-background: 165 60% 98% / 0.7;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 165 60% 90% / 0.8;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 165 60% 95% / 0.8;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+  .dark {
+    --background: 220 40% 16%; /* deep blue/gray */
+    --foreground: 210 40% 98%;
+    --card: 220 40% 20% / 0.7; /* glassy dark */
+    --card-foreground: 210 40% 98%;
+    --popover: 220 40% 20% / 0.7;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 220 40% 16% / 0.7;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 220 40% 24% / 0.8;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 40% 22% / 0.8;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 220 40% 22% / 0.7;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #e0f7fa 0%, #f8fafc 100%);
+  }
+  .dark body, .dark .text-foreground, .dark .text-slate-800, .dark .text-slate-600, .dark .text-slate-700, .dark .text-slate-400, .dark .text-slate-300, .dark .text-base, .dark .text-lg, .dark .text-black {
+    color: #fff !important;
+  }
+  .dark body {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  }
+  .poppins-extralight {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 200;
+    font-style: normal;
+  }
+}
+
+/* Glassmorphism utility classes */
+.glass-card {
+  background: rgba(255,255,255,0.7);
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-radius: 1.5rem;
+  border: 1.5px solid rgba(255,255,255,0.25);
+}
+.dark .glass-card {
+  background: rgba(30,41,59,0.7);
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.28);
+  border: 1.5px solid rgba(51,65,85,0.25);
+}
+.glass-sidebar {
+  background: rgba(224,247,250,0.7);
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.10);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 2rem;
+  border: 1.5px solid rgba(255,255,255,0.18);
+}
+.dark .glass-sidebar {
+  background: rgba(30,41,59,0.7);
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+  border: 1.5px solid rgba(51,65,85,0.18);
+}
+
+/* Typewriter effect for welcome headline */
+.typewriter-text {
+  overflow: hidden;
+  border-right: .15em solid #fff;
+  white-space: nowrap;
+  animation: typing 2.5s steps(30, end), blink-caret .75s step-end infinite;
+}
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: #fff; }
+}
+
+.animated-logo-gradient {
+  background: linear-gradient(90deg, #0ABAB5, #56DFCF, #0ABAB5);
+  background-size: 200% 200%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-move 3s linear infinite;
+}
+
+@keyframes gradient-move {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animated-logo-gradient-blue {
+  background: linear-gradient(90deg, #265d4a, #56dfcf, #265d4a);
+  background-size: 200% 200%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-move-blue 3s linear infinite;
+}
+
+@keyframes gradient-move-blue {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Glassy input utility */
+.glass-input {
+  background: rgba(255,255,255,0.7);
+  box-shadow: 0 2px 8px 0 rgba(38,93,74,0.08);
+  backdrop-filter: blur(8px) saturate(180%);
+  -webkit-backdrop-filter: blur(8px) saturate(180%);
+  border-radius: 1rem;
+  border: 1.5px solid rgba(38,93,74,0.18);
+}
+.dark .glass-input {
+  background: rgba(38,93,74,0.3);
+  box-shadow: 0 2px 8px 0 rgba(38,93,74,0.18);
+  border: 1.5px solid rgba(86,223,207,0.18);
+}

@@ -9,6 +9,7 @@ import { ThemeProvider } from "next-themes";
 import LoginHOD from "./pages/LoginHOD";
 import LoginStaff from "./pages/LoginStaff";
 import HodDashboard from "./pages/HodDashboard";
+import AddStudent from "./pages/AddStudent";
 import ForgotPassword from "./pages/ForgotPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -31,6 +32,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <HodDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/hod_dashboard/addStudent" 
+            element={
+              <ProtectedRoute>
+                <AddStudent />
               </ProtectedRoute>
             } 
           />

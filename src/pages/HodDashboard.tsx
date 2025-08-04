@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Moon, Sun, Search, Bell, User, Users, X, Plus } from "lucide-react";
+import { Moon, Sun, Search, Bell, User, Users, X, Plus, GraduationCap } from "lucide-react";
 import { useTheme } from "next-themes";
 import { getAuth, signOut, onAuthStateChanged, User as FirebaseUser, createUserWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, setDoc, collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc } from "firebase/firestore";
@@ -49,9 +49,16 @@ export default function HodDashboard() {
   // Add state for delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<StaffMember | null>(null);
+  
+
+  
+
 
   useEffect(() => {
     setMounted(true);
+    // Open staff section by default when HOD logs in
+    setShowStaffSection(true);
+    setStaffAnimation(true);
   }, []);
 
   // Load staff members when staff section is shown
@@ -106,6 +113,10 @@ export default function HodDashboard() {
       setShowStaffSection(false);
       setActiveTab('overview');
     }, 300);
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   const handleAddStaff = async (e: React.FormEvent) => {
@@ -293,6 +304,8 @@ export default function HodDashboard() {
     }
   };
 
+
+
   if (!user) {
     return null;
   }
@@ -320,6 +333,7 @@ export default function HodDashboard() {
         </div>
         <nav className="flex-1 flex flex-col gap-2 px-3">
           <SidebarNavLink icon={<User />} label="Staff" active={showStaffSection} onClick={handleStaffClick} />
+          <SidebarNavLink icon={<GraduationCap />} label="Student Data" active={false} onClick={() => navigate('/hod_dashboard/addStudent')} />
           <SidebarNavLink icon={<Bell />} label="Notifications" active={false} onClick={() => {}} />
           <SidebarNavLink icon={<Sun />} label="Analytics" active={false} onClick={() => {}} />
           <SidebarNavLink icon={<Search />} label="Wallets" active={false} onClick={() => {}} />
@@ -544,6 +558,7 @@ export default function HodDashboard() {
                 </div>
               )}
             </div>
+
           ) : (
             <div className="text-center">
               <div className="w-24 h-24 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -691,6 +706,8 @@ export default function HodDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+
     </div>
   );
 }

@@ -9,7 +9,7 @@ import * as XLSX from 'xlsx';
 
 const db = getFirestore();
 // Update this URL with your new Apps Script deployment URL
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyyvw5iG6A9K-ax5t4S-aKVVwinHBqzVJczQ3fj2MXjzlNEKEwLW4WTtOZrlMY08JkU/exec";
+const GAS_URL = "/api/upload";
 
 export default function AddStudent() {
   const { theme, setTheme } = useTheme();

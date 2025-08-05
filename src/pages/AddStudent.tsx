@@ -2,14 +2,16 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, setDoc, doc } from "firebase/firestore";
-import { User, GraduationCap, Bell, Sun, Search, Moon, ArrowLeft } from "lucide-react";
+import { User, GraduationCap, Bell, Sun, Search, Moon, ArrowLeft, Plus } from "lucide-react";
 import { toast, Toaster } from "react-hot-toast";
 import { useTheme } from "next-themes";
 import * as XLSX from 'xlsx';
+import GoogleSheetEmbed from '../components/GoogleSheetEmbed';
+import { createNewSheet } from '../services/sheetService';
 
 const db = getFirestore();
 // Update this URL with your new Apps Script deployment URL
-const GAS_URL = "/api/upload";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyyvw5iG6A9K-ax5t4S-aKVVwinHBqzVJczQ3fj2MXjzlNEKEwLW4WTtOZrlMY08JkU/exec";
 
 export default function AddStudent() {
   const { theme, setTheme } = useTheme();
@@ -31,6 +33,10 @@ export default function AddStudent() {
   const [showDataReviewPopup, setShowDataReviewPopup] = useState(false);
   const [reviewData, setReviewData] = useState<Array<{name: string, roll: string}> | null>(null);
   const [isSendingToSheet, setIsSendingToSheet] = useState(false);
+  
+  // Add state for creating new sheets
+  const [isCreatingSheet, setIsCreatingSheet] = useState(false);
+  const [currentSheetUrl, setCurrentSheetUrl] = useState("https://docs.google.com/spreadsheets/d/1MogHJjXUaB9CyN0FC9L-KuYbHQkEx0-rTKOnzsDSOUI/edit?gid=1102260332#gid=1102260332");
 
   useEffect(() => {
     setMounted(true);
@@ -408,27 +414,30 @@ export default function AddStudent() {
     });
   };
 
-  // Test function to verify Apps Script is working
-  const testAppsScript = async () => {
+  // Replace handleCreateNewSheet with Apps Script logic
+  const handleCreateNewSheet = async () => {
+    setIsCreatingSheet(true);
     try {
-      console.log('Testing Apps Script connection...');
-      const testData = [
-        { name: "Test Student 1", roll: "TEST001" },
-        { name: "Test Student 2", roll: "TEST002" },
-        { name: "Test Student 3", roll: "TEST003" }
-      ];
-      
-      await sendToGoogleAppsScript(testData);
-      toast.success('Apps Script test successful! Check your Google Sheet.', {
-        style: { background: '#dcfce7', color: '#166534' }
+      const res = await fetch("https://script.google.com/macros/s/AKfycbz2SGdf4fIh2j6TygRNXS4Ngqxyo7ILBKOKKFO_r6ogyEddeomahhFMaBwaWD7CSKEs/exec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
       });
-    } catch (error) {
-      console.error('Apps Script test failed:', error);
-      toast.error(`Apps Script test failed: ${error.message}`, {
-        style: { background: '#fef2f2', color: '#dc2626' }
-      });
+      const data = await res.json();
+      if (data.url) {
+        setCurrentSheetUrl(data.url);
+        toast.success("✅ New Sheet Created");
+      } else {
+        alert("❌ Failed to create new sheet (no URL returned)");
+      }
+    } catch (err) {
+      alert("❌ Failed to create new sheet: " + (err.message || err));
+    } finally {
+      setIsCreatingSheet(false);
     }
   };
+
+
 
   if (!mounted) {
     return null;
@@ -540,6 +549,25 @@ export default function AddStudent() {
                   </p>
                </div>
                              <div className="flex gap-3">
+                 {/* Create New Sheet Button */}
+                 <button
+                   onClick={handleCreateNewSheet}
+                   disabled={isCreatingSheet}
+                   className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                 >
+                   {isCreatingSheet ? (
+                     <>
+                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                       Creating...
+                     </>
+                   ) : (
+                     <>
+                       <Plus className="w-4 h-4" />
+                       Create New Sheet
+                     </>
+                   )}
+                 </button>
+                 
                  {/* Open File Button */}
                  <button
                    onClick={handleOpenFile}
@@ -549,17 +577,6 @@ export default function AddStudent() {
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                    </svg>
                    Open File
-                 </button>
-                 
-                 {/* Test Apps Script Button */}
-                 <button
-                   onClick={testAppsScript}
-                   className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition-colors"
-                 >
-                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                   </svg>
-                   Test Connection
                  </button>
                  
                  {/* Save Button */}
@@ -597,16 +614,12 @@ export default function AddStudent() {
             
             
                          {/* Google Sheets Embed - Full Screen */}
-             <div className="flex-1 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-               <iframe
-                 src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRLUq9YGix7aJnfFwJmZo_KjZyHnUdvVps6N89GvH44rbyi72buU7ATdOgBXWqKVL2wVc3i-qhxHk19/pubhtml?widget=true&amp;headers=false&amp;chrome=false&amp;rm=minimal"
-                 className="w-full h-full border-0"
-                 title="Student Data Sheet"
-                 allowFullScreen
-                 loading="lazy"
-                 style={{ minHeight: 'calc(100vh - 400px)' }}
-               />
-             </div>
+                                          <div className="flex-1">
+                 <GoogleSheetEmbed 
+                   sheetUrl={currentSheetUrl}
+                   title="Student Data Sheet"
+                 />
+               </div>
           </div>
         </div>
       </main>

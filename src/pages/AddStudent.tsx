@@ -7,7 +7,8 @@ import { toast, Toaster } from "react-hot-toast";
 import { useTheme } from "next-themes";
 import * as XLSX from 'xlsx';
 import GoogleSheetEmbed from '../components/GoogleSheetEmbed';
-import { createNewSheet } from '../services/sheetService';
+// Remove unused import
+// import { createNewSheet } from '../services/sheetService';
 
 const db = getFirestore();
 // Update this URL with your new Apps Script deployment URL
@@ -418,7 +419,7 @@ export default function AddStudent() {
   const handleCreateNewSheet = async () => {
     setIsCreatingSheet(true);
     try {
-      const res = await fetch("https://script.google.com/macros/s/AKfycbz2SGdf4fIh2j6TygRNXS4Ngqxyo7ILBKOKKFO_r6ogyEddeomahhFMaBwaWD7CSKEs/exec", {
+      const res = await fetch("/api/createSheet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({})
